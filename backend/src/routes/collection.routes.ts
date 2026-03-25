@@ -4,6 +4,9 @@ import { runCollectionCycle } from '../services/collection/collector.manager'
 import { collectNewsMentions } from '../services/collection/news.collector'
 import { collectTwitterMentions } from '../services/collection/twitter.collector'
 import { collectYouTubeMentions } from '../services/collection/youtube.collector'
+import { collectFacebookMentions } from '../services/collection/facebook.collector'
+import { collectInstagramMentions } from '../services/collection/instagram.collector'
+import { env } from '../config/env'
 import { Project } from '../models/postgres/Project'
 import { success, error } from '../utils/response'
 import type { AuthRequest } from '../types'
@@ -41,9 +44,11 @@ router.post('/trigger/:projectId', async (req: AuthRequest, res, next) => {
     Promise.all([
       collectTwitterMentions(project.id, keywords),
       collectYouTubeMentions(project.id, keywords),
-      collectNewsMentions(project.id, keywords),
-    ]).then(([t, y, n]) => {
-      console.log(`Manual collection done: Twitter=${t} YouTube=${y} News=${n}`)
+      env.ENABLE_NEWS_COLLECTION ? collectNewsMentions(project.id, keywords) : Promise.resolve(0),
+      env.ENABLE_FACEBOOK_COLLECTION ? collectFacebookMentions(project.id, keywords) : Promise.resolve(0),
+      env.ENABLE_INSTAGRAM_COLLECTION ? collectInstagramMentions(project.id, keywords) : Promise.resolve(0),
+    ]).then(([t, y, n, f, i]) => {
+      console.log(`Manual collection done: Twitter=${t} YouTube=${y} News=${n} Facebook=${f} Instagram=${i}`)
     }).catch(console.error)
 
     success(res, { message: `Collection started for ${keywords.length} keywords`, keywords })

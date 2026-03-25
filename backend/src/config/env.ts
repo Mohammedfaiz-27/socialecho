@@ -42,10 +42,14 @@ export const env = {
 
   RAPIDAPI_KEY: optional('RAPIDAPI_KEY', ''),
   YOUTUBE_API_KEY: optional('YOUTUBE_API_KEY', ''),
+  FACEBOOK_RAPIDAPI_HOST: optional('FACEBOOK_RAPIDAPI_HOST', 'facebook-scraper-api4.p.rapidapi.com'),
+  INSTAGRAM_RAPIDAPI_HOST: optional('INSTAGRAM_RAPIDAPI_HOST', 'instagram-looter2.p.rapidapi.com'),
 
   ENABLE_AUTO_COLLECTION: optional('ENABLE_AUTO_COLLECTION', 'true') === 'true',
   DATA_COLLECTION_INTERVAL_MINUTES: parseInt(optional('DATA_COLLECTION_INTERVAL_MINUTES', '15'), 10),
   ENABLE_NEWS_COLLECTION: optional('ENABLE_NEWS_COLLECTION', 'true') === 'true',
+  ENABLE_FACEBOOK_COLLECTION: optional('ENABLE_FACEBOOK_COLLECTION', 'true') === 'true',
+  ENABLE_INSTAGRAM_COLLECTION: optional('ENABLE_INSTAGRAM_COLLECTION', 'true') === 'true',
 
   RATE_LIMIT_WINDOW_MS: parseInt(optional('RATE_LIMIT_WINDOW_MS', '60000'), 10),
   RATE_LIMIT_MAX_STANDARD: parseInt(optional('RATE_LIMIT_MAX_STANDARD', '1000'), 10),

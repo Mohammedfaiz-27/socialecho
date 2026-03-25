@@ -12,6 +12,11 @@ import { format } from 'date-fns'
 const TWITTER_HOST = 'twitter241.p.rapidapi.com'
 const TWITTER_PATH = '/search-v2'
 
+// Languages supported by MongoDB text search — anything else falls back to 'en'
+const MONGODB_TEXT_LANGUAGES = new Set([
+  'da', 'nl', 'en', 'fi', 'fr', 'de', 'hu', 'it', 'nb', 'pt', 'ro', 'ru', 'es', 'sv', 'tr',
+])
+
 const client = axios.create({
   headers: {
     'x-rapidapi-key': env.RAPIDAPI_KEY,
@@ -95,7 +100,8 @@ export async function collectTwitterMentions(
         const userLegacy = tr.core?.user_results?.result?.legacy
         const followerCount = userLegacy?.followers_count ?? 0
         const screenName = userLegacy?.screen_name ?? 'unknown'
-        const lang = legacy?.lang ?? 'en'
+        const rawLang = legacy?.lang ?? 'en'
+        const lang = MONGODB_TEXT_LANGUAGES.has(rawLang) ? rawLang : 'en'
         const favorites = legacy?.favorite_count ?? 0
         const retweets = legacy?.retweet_count ?? 0
         const replies = legacy?.reply_count ?? 0

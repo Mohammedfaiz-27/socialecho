@@ -6,6 +6,8 @@ import { Project } from '../../models/postgres/Project'
 import { collectTwitterMentions } from './twitter.collector'
 import { collectYouTubeMentions } from './youtube.collector'
 import { collectNewsMentions } from './news.collector'
+import { collectFacebookMentions } from './facebook.collector'
+import { collectInstagramMentions } from './instagram.collector'
 import { env } from '../../config/env'
 import { logger } from '../../utils/logger'
 import type { Server as SocketServer } from 'socket.io'
@@ -36,17 +38,19 @@ export async function runCollectionCycle(): Promise<void> {
 
       logger.info(`Collecting mentions for project: ${project.name} (${keywords.length} keywords)`)
 
-      const [twitterCount, youtubeCount, newsCount] = await Promise.allSettled([
+      const [twitterCount, youtubeCount, newsCount, facebookCount, instagramCount] = await Promise.allSettled([
         collectTwitterMentions(project.id, keywords),
         collectYouTubeMentions(project.id, keywords),
         env.ENABLE_NEWS_COLLECTION ? collectNewsMentions(project.id, keywords) : Promise.resolve(0),
+        env.ENABLE_FACEBOOK_COLLECTION ? collectFacebookMentions(project.id, keywords) : Promise.resolve(0),
+        env.ENABLE_INSTAGRAM_COLLECTION ? collectInstagramMentions(project.id, keywords) : Promise.resolve(0),
       ]).then((results) =>
         results.map((r) => (r.status === 'fulfilled' ? r.value : 0))
       )
 
-      const total = twitterCount + youtubeCount + newsCount
+      const total = twitterCount + youtubeCount + newsCount + facebookCount + instagramCount
       logger.info(
-        `Project "${project.name}": +${total} mentions (Twitter: ${twitterCount}, YouTube: ${youtubeCount}, News: ${newsCount})`
+        `Project "${project.name}": +${total} mentions (Twitter: ${twitterCount}, YouTube: ${youtubeCount}, News: ${newsCount}, Facebook: ${facebookCount}, Instagram: ${instagramCount})`
       )
 
       // Notify connected dashboard users via WebSocket

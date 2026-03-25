@@ -11,7 +11,22 @@ export const logger = winston.createLogger({
       : winston.format.combine(
           winston.format.colorize(),
           winston.format.printf(({ timestamp, level, message, ...meta }) => {
-            const metaStr = Object.keys(meta).length ? ' ' + JSON.stringify(meta) : ''
+            let metaStr = ''
+            if (Object.keys(meta).length) {
+              try {
+                metaStr = ' ' + JSON.stringify(meta, (_key, value) => {
+                  if (value instanceof Error) return { message: value.message, stack: value.stack }
+                  if (typeof value === 'object' && value !== null) {
+                    // Drop circular/socket objects
+                    if (value.constructor?.name === 'TLSSocket' || value.constructor?.name === 'Socket') return '[Socket]'
+                    if (value.constructor?.name === 'HTTPParser') return '[HTTPParser]'
+                  }
+                  return value
+                })
+              } catch {
+                metaStr = ' [unserializable meta]'
+              }
+            }
             return `${timestamp} [${level}]: ${message}${metaStr}`
           })
         )

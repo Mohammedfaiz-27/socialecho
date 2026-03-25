@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(mongosh socialecho:*)",
-      "Bash(mongosh --eval \"db.adminCommand\\({listDatabases: 1}\\)\")"
+      "Bash(mongosh --eval \"db.adminCommand\\({listDatabases: 1}\\)\")",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }
