@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(mongosh socialecho:*)",
+      "Bash(mongosh --eval \"db.adminCommand\\({listDatabases: 1}\\)\")"
+    ]
+  }
+}

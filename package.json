@@ -1,0 +1,20 @@
+{
+  "name": "socialecho",
+  "version": "1.0.0",
+  "description": "Real-Time Social Listening & Brand Monitoring Platform",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "dev:backend": "npm --workspace backend run dev",
+    "build": "npm --workspace frontend run build && npm --workspace backend run build",
+    "install:all": "npm install && npm --workspace frontend install && npm --workspace backend install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
