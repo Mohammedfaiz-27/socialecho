@@ -105,7 +105,7 @@ export const mentionService = {
   async getMention(projectId: string, mentionId: string) {
     const mention = await Mention.findOne({ _id: mentionId, projectId })
     if (!mention) throw Object.assign(new Error('Mention not found'), { status: 404, code: 'NOT_FOUND' })
-    return formatMention(mention.toObject())
+    return formatMention(mention.toObject() as unknown as Record<string, unknown>)
   },
 
   async updateMention(
@@ -127,7 +127,7 @@ export const mentionService = {
       { new: true }
     )
     if (!mention) throw Object.assign(new Error('Mention not found'), { status: 404, code: 'NOT_FOUND' })
-    return formatMention(mention.toObject())
+    return formatMention(mention.toObject() as unknown as Record<string, unknown>)
   },
 
   async getMentionStats(projectId: string) {
