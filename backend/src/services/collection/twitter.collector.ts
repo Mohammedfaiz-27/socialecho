@@ -67,7 +67,7 @@ export async function collectTwitterMentions(
 
       try {
         const res = await client.get(`https://${TWITTER_HOST}${TWITTER_PATH}`, {
-          params: { query: keyword, type: 'Top', count: 20 },
+          params: { query: `"${keyword}" lang:en`, type: 'Latest', count: 40 },
           headers: { 'x-rapidapi-host': TWITTER_HOST },
         })
         data = res.data
@@ -96,10 +96,19 @@ export async function collectTwitterMentions(
         const text = legacy?.full_text ?? ''
         if (!text) continue
 
+        // Skip tweets that don't actually contain the keyword in the text
+        if (!text.toLowerCase().includes(keyword.toLowerCase())) continue
+
         const tweetId = tr.rest_id ?? legacy?.id_str ?? ''
-        const userLegacy = tr.core?.user_results?.result?.legacy
+        const userResult = tr.core?.user_results?.result
+        const userLegacy = userResult?.legacy
+        const userResultRaw = userResult as unknown as Record<string, unknown>
         const followerCount = userLegacy?.followers_count ?? 0
-        const screenName = userLegacy?.screen_name ?? 'unknown'
+        const screenName = userLegacy?.screen_name
+          ?? userResultRaw?.screen_name as string | undefined
+          ?? userResultRaw?.username as string | undefined
+          ?? userLegacy?.name?.toLowerCase().replace(/\s+/g, '_')
+          ?? keyword.toLowerCase().replace(/[^a-z0-9_]/g, '_')
         const rawLang = legacy?.lang ?? 'en'
         const lang = MONGODB_TEXT_LANGUAGES.has(rawLang) ? rawLang : 'en'
         const favorites = legacy?.favorite_count ?? 0
@@ -131,7 +140,7 @@ export async function collectTwitterMentions(
           },
           author: {
             username: screenName,
-            displayName: userLegacy?.name ?? 'Unknown',
+            displayName: userLegacy?.name ?? userResultRaw?.name as string | undefined ?? screenName,
             profileUrl: `https://twitter.com/${screenName}`,
             followerCount,
             isVerified: userLegacy?.verified ?? false,

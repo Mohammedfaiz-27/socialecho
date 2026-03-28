@@ -133,7 +133,7 @@ export async function collectYouTubeMentions(
             language: 'en',
           },
           author: {
-            username: item.snippet.channelId,
+            username: item.snippet.channelTitle.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
             displayName: item.snippet.channelTitle,
             profileUrl: `https://www.youtube.com/channel/${item.snippet.channelId}`,
             followerCount: subscriberCount,

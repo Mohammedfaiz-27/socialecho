@@ -179,10 +179,15 @@ export async function collectFacebookMentions(
         const text = post.message ?? post.text ?? post.story ?? ''
         if (!text) continue
 
+        if (!text.toLowerCase().includes(keyword.toLowerCase())) continue
+
         const postId = post.post_id ?? post.id ?? ''
         const author = post.from ?? post.author ?? post.user
-        const username = author?.username ?? author?.name?.toLowerCase().replace(/\s+/g, '.') ?? 'unknown'
-        const displayName = author?.name ?? username
+        const username = author?.username
+          ?? author?.name?.toLowerCase().replace(/\s+/g, '.')
+          ?? author?.id
+          ?? keyword.toLowerCase().replace(/[^a-z0-9_]/g, '_')
+        const displayName = author?.name ?? author?.username ?? username
         const followerCount = (post.from as FBPost['from'])?.fan_count
           ?? (post.from as FBPost['from'])?.followers_count
           ?? (post.author as FBPost['author'])?.follower_count

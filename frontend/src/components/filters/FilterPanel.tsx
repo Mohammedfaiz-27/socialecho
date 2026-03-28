@@ -14,15 +14,10 @@ const SOURCE_OPTIONS: { value: SocialPlatform; label: string }[] = [
   { value: 'twitter',   label: 'X (Twitter)' },
   { value: 'facebook',  label: 'Facebook' },
   { value: 'instagram', label: 'Instagram' },
-  { value: 'tiktok',    label: 'TikTok' },
   { value: 'youtube',   label: 'YouTube' },
-  { value: 'linkedin',  label: 'LinkedIn' },
-  { value: 'reddit',    label: 'Reddit' },
-  { value: 'news',      label: 'News' },
+  { value: 'news',      label: 'Print News' },
   { value: 'blog',      label: 'Blogs' },
-  { value: 'podcast',   label: 'Podcasts' },
-  { value: 'web',       label: 'Web' },
-  { value: 'other',     label: 'Other' },
+  { value: 'web',       label: 'Web News' },
 ]
 
 const DATE_PRESETS = [

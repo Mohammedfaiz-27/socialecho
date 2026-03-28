@@ -161,9 +161,9 @@ export const mentionService = {
 
     const mention = await Mention.create(mentionData)
 
-    // Increment project counters
+    // Increment project counters (newMentionsCount is computed live from MongoDB)
     await Project.increment(
-      { totalMentionsCount: 1, mentionUsage: 1, newMentionsCount: 1 },
+      { totalMentionsCount: 1, mentionUsage: 1 },
       { where: { id: mentionData.projectId } }
     )
 

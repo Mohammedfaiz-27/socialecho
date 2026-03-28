@@ -164,7 +164,7 @@ export async function collectInstagramMentions(
       // /search returns discovery results (users/hashtags), not posts.
       // Extract the best username or hashtag and fetch posts from it.
       const searchResult = data as Record<string, unknown>
-      const usersArr = Array.isArray(searchResult.users) ? searchResult.users as Array<{ position: number; user: { username?: string; pk?: string } }> : []
+      const usersArr = Array.isArray(searchResult.users) ? searchResult.users as Array<{ position: number; user: { username?: string; pk?: string; full_name?: string } }> : []
       const hashtagsArr = Array.isArray(searchResult.hashtags) ? searchResult.hashtags as Array<{ position: number; hashtag: { name?: string } }> : []
 
       // Prefer verified/top user; fall back to top hashtag
@@ -172,6 +172,8 @@ export async function collectInstagramMentions(
       const topHashtag = hashtagsArr.sort((a, b) => a.position - b.position)[0]?.hashtag
 
       let feedData: unknown = null
+      let feedUsername: string | undefined
+      let feedDisplayName: string | undefined
 
       if (topUser?.pk) {
         logger.debug(`Instagram: fetching user feed for @${topUser.username} pk=${topUser.pk} (keyword "${keyword}")`)
@@ -184,6 +186,7 @@ export async function collectInstagramMentions(
             logger.debug(`Instagram: user-feeds returned error for "${keyword}" (status:false), trying hashtag`)
           } else {
             feedData = r.data
+            feedUsername = topUser.username
           }
         } catch (e: unknown) {
           const status = (e as { response?: { status?: number } })?.response?.status
@@ -204,6 +207,12 @@ export async function collectInstagramMentions(
         }
       }
 
+      // Also capture display name from search result for fallback
+      if (topUser?.username) {
+        feedUsername = feedUsername ?? topUser.username
+      }
+      feedDisplayName = usersArr[0]?.user?.full_name ?? feedUsername
+
       if (!feedData) {
         logger.warn(`Instagram: no feed data found for keyword "${keyword}"`)
         await sleep(1000)
@@ -221,9 +230,16 @@ export async function collectInstagramMentions(
         const text = getCaption(post)
         if (!text) continue
 
+        if (!text.toLowerCase().includes(keyword.toLowerCase())) continue
+
         const owner = post.owner ?? post.user
-        const postUsername = owner?.username ?? 'unknown'
-        const displayName = owner?.full_name ?? postUsername
+        const postUsername = owner?.username
+          ?? (post as unknown as Record<string, unknown>).username as string | undefined
+          ?? (post as unknown as Record<string, unknown>).screen_name as string | undefined
+          ?? owner?.full_name?.toLowerCase().replace(/\s+/g, '_')
+          ?? feedUsername
+          ?? keyword.toLowerCase().replace(/\s+/g, '_')
+        const displayName = owner?.full_name ?? owner?.username ?? feedDisplayName ?? postUsername
         const followerCount = owner?.follower_count ?? owner?.edge_followed_by?.count ?? 0
         const isVerified = owner?.is_verified ?? false
 

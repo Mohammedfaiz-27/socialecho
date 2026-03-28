@@ -1,3 +1,4 @@
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,17 +107,12 @@ export type SocialPlatform =
   | 'twitter'
   | 'facebook'
   | 'instagram'
-  | 'tiktok'
   | 'youtube'
-  | 'linkedin'
-  | 'reddit'
   | 'telegram'
   | 'bluesky'
   | 'news'
   | 'blog'
-  | 'podcast'
   | 'web'
-  | 'other'
 
 export interface MentionAuthor {
   username: string

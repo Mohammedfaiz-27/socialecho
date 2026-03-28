@@ -16,7 +16,26 @@ export const projectService = {
       order: [['createdAt', 'DESC']],
       include: [{ model: TeamMember, as: 'teamMembers', include: [User] }],
     })
-    return { data: rows, total: count, page, pageSize, totalPages: Math.ceil(count / pageSize) }
+
+    // Compute live newMentionsCount from MongoDB for all projects in one query
+    const projectIds = rows.map((p) => p.id)
+    const newCounts = await Mention.aggregate([
+      { $match: { projectId: { $in: projectIds }, 'metadata.status': 'new' } },
+      { $group: { _id: '$projectId', count: { $sum: 1 } } },
+    ]) as Array<{ _id: string; count: number }>
+    const newCountMap = new Map(newCounts.map((r) => [r._id, r.count]))
+
+    const data = rows.map((p) => {
+      const plain = p.get({ plain: true }) as Record<string, unknown>
+      const total = plain.totalMentionsCount as number ?? 0
+      return {
+        ...plain,
+        newMentionsCount: newCountMap.get(p.id) ?? 0,
+        presenceScore: computePresenceScore(total),
+      }
+    })
+
+    return { data, total: count, page, pageSize, totalPages: Math.ceil(count / pageSize) }
   },
 
   async getProject(projectId: string, userId: string) {
@@ -25,7 +44,15 @@ export const projectService = {
       include: [{ model: TeamMember, as: 'teamMembers', include: [User] }],
     })
     if (!project) throw Object.assign(new Error('Project not found'), { status: 404, code: 'NOT_FOUND' })
-    return project
+
+    const newCount = await Mention.countDocuments({ projectId, 'metadata.status': 'new' })
+    const plain = project.get({ plain: true }) as Record<string, unknown>
+    const total = plain.totalMentionsCount as number ?? 0
+    return {
+      ...plain,
+      newMentionsCount: newCount,
+      presenceScore: computePresenceScore(total),
+    }
   },
 
   async createProject(userId: string, name: string, description?: string) {
@@ -102,4 +129,10 @@ export const projectService = {
     await project.update({ keywords })
     return project
   },
+}
+
+// Logarithmic presence score: 0 mentions=0, ~100 mentions=25, ~1000 mentions=50, ~10000 mentions=75, ~100000=100
+function computePresenceScore(totalMentions: number): number {
+  if (totalMentions <= 0) return 0
+  return Math.min(100, Math.round(Math.log10(totalMentions + 1) * 25))
 }

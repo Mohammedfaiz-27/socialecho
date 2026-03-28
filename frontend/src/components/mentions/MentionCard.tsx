@@ -70,10 +70,20 @@ export default function MentionCard({ mention, projectId, onOpen }: Props) {
       {/* Author row */}
       <div className="flex items-center gap-2 mt-3">
         <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-500 shrink-0">
-          {mention.author.displayName?.[0]?.toUpperCase() ?? '?'}
+          {mention.author.username && mention.author.username !== 'unknown'
+            ? mention.author.username[0].toUpperCase()
+            : mention.author.displayName && mention.author.displayName !== 'Unknown'
+              ? mention.author.displayName[0].toUpperCase()
+              : mention.source.platform[0].toUpperCase()}
         </div>
         <div className="min-w-0">
-          <span className="text-xs font-semibold text-slate-800">@{mention.author.username}</span>
+          <span className="text-xs font-semibold text-slate-800">
+            {mention.author.username && mention.author.username !== 'unknown'
+              ? `@${mention.author.username}`
+              : mention.author.displayName && mention.author.displayName !== 'Unknown'
+                ? mention.author.displayName
+                : `@${mention.source.platform}_user`}
+          </span>
           {mention.author.isVerified && (
             <span className="ml-1 text-blue-500 text-xs">✓</span>
           )}

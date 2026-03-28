@@ -1,10 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
 import { useAppSelector } from '@/hooks/useAppSelector'
 
 export default function Header() {
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
   const currentProject = useAppSelector((s) => s.projects.currentProject)
   const newMentions = currentProject?.newMentionsCount ?? 0
 
@@ -45,30 +43,6 @@ export default function Header() {
           </span>
         )}
 
-        {/* User menu */}
-        <div className="relative group">
-          <button className="flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900 transition-colors">
-            <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold text-xs">
-              {user?.name?.[0]?.toUpperCase() ?? 'U'}
-            </div>
-            <span className="font-medium hidden sm:block">{user?.name}</span>
-          </button>
-          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-            <button
-              onClick={() => navigate('/settings')}
-              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              Account Settings
-            </button>
-            <hr className="my-1 border-slate-100" />
-            <button
-              onClick={() => { logout(); navigate('/login') }}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
       </div>
     </header>
   )

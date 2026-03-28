@@ -1,5 +1,6 @@
-import { NavLink, useParams } from 'react-router-dom'
+import { NavLink, useNavigate, useParams } from 'react-router-dom'
 import { useAppSelector } from '@/hooks/useAppSelector'
+import { useAuth } from '@/hooks/useAuth'
 import clsx from 'clsx'
 
 const navItems = [
@@ -53,22 +54,14 @@ const navItems = [
     ),
     to: (pid: string) => `/projects/${pid}/reports`,
   },
-  {
-    label: 'Settings',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
-    to: (pid: string) => `/projects/${pid}/settings`,
-  },
 ]
 
 export default function Sidebar() {
   const { projectId } = useParams<{ projectId: string }>()
   const currentProject = useAppSelector((s) => s.projects.currentProject)
+  const allProjects = useAppSelector((s) => s.projects.projects)
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <aside className="w-60 shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
@@ -76,26 +69,18 @@ export default function Sidebar() {
       <div className="px-5 py-4 border-b border-slate-200">
         <NavLink to="/projects" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">SE</span>
+            <span className="text-white font-bold text-sm">SR</span>
           </div>
-          <span className="text-slate-900 font-semibold text-sm">SocialEcho</span>
+          <span className="text-slate-900 font-semibold text-sm">Smart Radar</span>
         </NavLink>
       </div>
 
-      {/* Current project label */}
-      {currentProject && (
-        <div className="px-5 py-3 border-b border-slate-100">
-          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">
-            Current Project
-          </p>
-          <p className="text-sm font-semibold text-slate-800 truncate">{currentProject.name}</p>
-        </div>
-      )}
-
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+        {/* All Projects link */}
         <NavLink
           to="/projects"
+          end
           className={({ isActive }) =>
             clsx(
               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -112,10 +97,40 @@ export default function Sidebar() {
           All Projects
         </NavLink>
 
+        {/* Project list — only shown on All Projects page */}
+        {!projectId && allProjects.length > 0 && (
+          <>
+            <div className="pt-3 pb-1 px-3">
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Projects</p>
+            </div>
+            {allProjects.map((project) => (
+              <NavLink
+                key={project.id}
+                to={`/projects/${project.id}`}
+                end
+                className={({ isActive }) =>
+                  clsx(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    isActive || projectId === project.id
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  )
+                }
+              >
+                <div className="w-2 h-2 rounded-full bg-brand-400 shrink-0" />
+                <span className="truncate">{project.name}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
+
+        {/* Current project sub-nav */}
         {projectId && (
           <>
             <div className="pt-3 pb-1 px-3">
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Project</p>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                {currentProject?.name ?? 'Project'}
+              </p>
             </div>
             {navItems.map((item) => (
               <NavLink
@@ -138,6 +153,40 @@ export default function Sidebar() {
           </>
         )}
       </nav>
+
+      {/* Bottom: Settings + User */}
+      <div className="border-t border-slate-200 px-3 py-3 space-y-0.5">
+        {/* Settings */}
+        <button
+          onClick={() => navigate('/settings')}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Settings
+        </button>
+
+        {/* User + Logout */}
+        <div className="flex items-center gap-2 px-3 py-2">
+          <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold text-xs shrink-0">
+            {user?.name?.[0]?.toUpperCase() ?? 'U'}
+          </div>
+          <span className="text-sm font-medium text-slate-700 truncate flex-1">{user?.name}</span>
+          <button
+            onClick={() => { logout(); navigate('/login') }}
+            title="Sign Out"
+            className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </aside>
   )
 }

@@ -28,10 +28,10 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-12 h-12 bg-brand-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-            <span className="text-white font-bold text-lg">SE</span>
+            <span className="text-white font-bold text-lg">SR</span>
           </div>
           <h1 className="text-xl font-bold text-slate-900">Welcome back</h1>
-          <p className="text-sm text-slate-500 mt-1">Sign in to SocialEcho</p>
+          <p className="text-sm text-slate-500 mt-1">Sign in to Smart Radar</p>
         </div>
 
         {error && (
