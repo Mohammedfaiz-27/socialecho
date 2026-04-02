@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { analyticsService } from '../services/analytics.service'
+import { Mention } from '../models/mongo/Mention'
 import { authenticate } from '../middleware/auth'
 import { success } from '../utils/response'
 import type { AuthRequest } from '../types'
@@ -15,6 +16,46 @@ router.get('/metrics', async (req: AuthRequest, res, next) => {
     const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
     const metrics = await analyticsService.getMetrics(req.params.projectId, from, to)
     success(res, metrics)
+  } catch (err) { next(err) }
+})
+
+router.get('/export', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+
+    const mentions = await Mention.find({
+      projectId: req.params.projectId,
+      'temporal.publishedAt': { $gte: new Date(from), $lte: new Date(to) },
+    })
+      .sort({ 'temporal.publishedAt': -1 })
+      .limit(5000)
+      .lean()
+
+    const headers = ['Date', 'Platform', 'Author', 'Username', 'Content', 'Sentiment', 'Confidence', 'Followers', 'Likes', 'Comments', 'Shares', 'Engagement Rate', 'Influence Score', 'URL']
+    const rows = mentions.map((m) => [
+      m.temporal?.publishedAt ? new Date(m.temporal.publishedAt).toISOString().split('T')[0] : '',
+      m.source?.platform ?? '',
+      `"${(m.author?.displayName ?? '').replace(/"/g, '""')}"`,
+      m.author?.username ?? '',
+      `"${(m.content?.text ?? '').replace(/"/g, '""').slice(0, 300)}"`,
+      m.analysis?.sentiment ?? '',
+      m.analysis?.sentimentConfidence ?? 0,
+      m.author?.followerCount ?? 0,
+      m.engagement?.likes ?? 0,
+      m.engagement?.comments ?? 0,
+      m.engagement?.shares ?? 0,
+      m.engagement?.engagementRate != null ? m.engagement.engagementRate.toFixed(2) : '0',
+      m.analysis?.influenceScore != null ? m.analysis.influenceScore.toFixed(1) : '0',
+      m.content?.url ?? '',
+    ])
+
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+    const fromDate = from.split('T')[0]
+    const toDate = to.split('T')[0]
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="mentions-${fromDate}-to-${toDate}.csv"`)
+    res.send(csv)
   } catch (err) { next(err) }
 })
 

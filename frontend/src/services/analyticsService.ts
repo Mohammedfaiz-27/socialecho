@@ -38,4 +38,21 @@ export const analyticsService = {
     })
     return data.data
   },
+
+  async exportCSV(projectId: string, from: string, to: string): Promise<void> {
+    const { data } = await api.get(`/projects/${projectId}/analytics/export`, {
+      params: { from, to },
+      responseType: 'blob',
+    })
+    const url = URL.createObjectURL(new Blob([data as BlobPart], { type: 'text/csv' }))
+    const a = document.createElement('a')
+    const fromDate = from.split('T')[0]
+    const toDate = to.split('T')[0]
+    a.href = url
+    a.download = `mentions-${fromDate}-to-${toDate}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
 }
