@@ -100,6 +100,51 @@ router.get('/spikes', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err) }
 })
 
+router.get('/wordcloud', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+    const data = await analyticsService.getWordCloud(req.params.projectId, from, to)
+    success(res, data)
+  } catch (err) { next(err) }
+})
+
+router.get('/languages', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+    const data = await analyticsService.getLanguageBreakdown(req.params.projectId, from, to)
+    success(res, data)
+  } catch (err) { next(err) }
+})
+
+router.get('/heatmap', async (req: AuthRequest, res, next) => {
+  try {
+    const data = await analyticsService.getMentionHeatmap(req.params.projectId)
+    success(res, data)
+  } catch (err) { next(err) }
+})
+
+router.get('/geo', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+    const data = await analyticsService.getGeoBreakdown(req.params.projectId, from, to)
+    success(res, data)
+  } catch (err) { next(err) }
+})
+
+router.get('/competitors', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+    const names = ((req.query.names as string) ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+    if (!names.length) { success(res, []); return }
+    const data = await analyticsService.getCompetitorComparison(req.params.projectId, names, from, to)
+    success(res, data)
+  } catch (err) { next(err) }
+})
+
 router.post('/ai-summary', async (req: AuthRequest, res, next) => {
   try {
     const to = (req.query.to as string) ?? formatISO(new Date())

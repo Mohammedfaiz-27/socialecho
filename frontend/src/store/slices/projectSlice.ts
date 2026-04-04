@@ -36,7 +36,7 @@ export const fetchProject = createAsyncThunk(
 
 export const createProject = createAsyncThunk(
   'projects/create',
-  async (data: { name: string; description?: string }, { rejectWithValue }) => {
+  async (data: { name: string; description?: string; projectType?: 'own' | 'competitor' }, { rejectWithValue }) => {
     try {
       return await projectService.createProject(data)
     } catch (err: unknown) {

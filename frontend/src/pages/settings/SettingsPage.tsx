@@ -18,7 +18,7 @@ export default function SettingsPage() {
       })
     }
   }, [projectId, project, dispatch])
-  const [activeTab, setActiveTab] = useState<'general' | 'keywords' | 'team' | 'connections' | 'notifications'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'keywords' | 'competitors' | 'team' | 'connections' | 'notifications'>('general')
   const [saved, setSaved] = useState(false)
   const [showAddKeyword, setShowAddKeyword] = useState(false)
   const [newKeyword, setNewKeyword] = useState('')
@@ -27,6 +27,12 @@ export default function SettingsPage() {
   const [keywordError, setKeywordError] = useState('')
   const [collecting, setCollecting] = useState(false)
   const [collectMsg, setCollectMsg] = useState('')
+  const [competitors, setCompetitors] = useState<string[]>(
+    () => ((project?.settings as Record<string, unknown>)?.competitors as string[]) ?? []
+  )
+  const [newCompetitor, setNewCompetitor] = useState('')
+  const [competitorSaving, setCompetitorSaving] = useState(false)
+  const [competitorMsg, setCompetitorMsg] = useState('')
 
   const { register, handleSubmit } = useForm({
     defaultValues: {
@@ -77,9 +83,43 @@ export default function SettingsPage() {
     }
   }
 
+  async function saveCompetitors(list: string[]) {
+    if (!projectId) return
+    setCompetitorSaving(true)
+    setCompetitorMsg('')
+    try {
+      await api.put(`/projects/${projectId}`, {
+        settings: { ...((project?.settings as Record<string, unknown>) ?? {}), competitors: list },
+      })
+      setCompetitorMsg('Saved!')
+      dispatch(updateProject({ id: projectId, data: { settings: { ...((project?.settings as Record<string, unknown>) ?? {}), competitors: list } } }))
+    } catch {
+      setCompetitorMsg('Failed to save')
+    } finally {
+      setCompetitorSaving(false)
+      setTimeout(() => setCompetitorMsg(''), 3000)
+    }
+  }
+
+  function addCompetitor() {
+    const name = newCompetitor.trim()
+    if (!name || competitors.includes(name)) return
+    const updated = [...competitors, name]
+    setCompetitors(updated)
+    setNewCompetitor('')
+    saveCompetitors(updated)
+  }
+
+  function removeCompetitor(name: string) {
+    const updated = competitors.filter((c) => c !== name)
+    setCompetitors(updated)
+    saveCompetitors(updated)
+  }
+
   const tabs = [
     { key: 'general', label: 'General' },
     { key: 'keywords', label: 'Keywords' },
+    { key: 'competitors', label: 'Competitors' },
     { key: 'connections', label: 'Connections' },
     { key: 'team', label: 'Team' },
     { key: 'notifications', label: 'Notifications' },
@@ -238,6 +278,67 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Competitors tab */}
+      {activeTab === 'competitors' && (
+        <div className="card p-6 max-w-lg">
+          <h2 className="text-sm font-semibold text-slate-800 mb-1">Competitor Tracking</h2>
+          <p className="text-xs text-slate-400 mb-5">
+            Add competitor names to track their mentions alongside yours in the Analytics page.
+          </p>
+
+          {/* Add form */}
+          <div className="flex items-center gap-2 mb-5">
+            <input
+              type="text"
+              className="input flex-1"
+              placeholder="e.g. Competitor brand name"
+              value={newCompetitor}
+              onChange={(e) => setNewCompetitor(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addCompetitor()}
+            />
+            <button
+              className="btn-primary text-sm whitespace-nowrap"
+              onClick={addCompetitor}
+              disabled={competitorSaving || !newCompetitor.trim()}
+            >
+              + Add
+            </button>
+          </div>
+
+          {competitors.length === 0 ? (
+            <p className="text-sm text-slate-400">No competitors tracked yet. Add one above.</p>
+          ) : (
+            <div className="space-y-2">
+              {competitors.map((name) => (
+                <div key={name} className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold">
+                      {name[0].toUpperCase()}
+                    </div>
+                    <span className="text-sm font-medium text-slate-800">{name}</span>
+                  </div>
+                  <button
+                    className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                    onClick={() => removeCompetitor(name)}
+                    title="Remove competitor"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {competitorMsg && (
+            <p className={`text-xs mt-3 ${competitorMsg === 'Saved!' ? 'text-green-600' : 'text-red-500'}`}>
+              {competitorMsg}
+            </p>
           )}
         </div>
       )}

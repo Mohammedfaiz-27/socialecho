@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import type { Project } from '@/types'
-import PresenceScore from '@/components/common/PresenceScore'
 import { useAppDispatch } from '@/hooks/useAppDispatch'
 import { deleteProject } from '@/store/slices/projectSlice'
 
@@ -32,15 +31,31 @@ export default function ProjectCard({ project }: Props) {
       {/* Card header */}
       <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-3 border-b border-slate-50">
         <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            {(project.settings as Record<string, unknown>)?.projectType === 'competitor' ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-rose-100 text-rose-600 rounded-full uppercase tracking-wide">
+                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Competitor
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-brand-100 text-brand-600 rounded-full uppercase tracking-wide">
+                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Own Brand
+              </span>
+            )}
+          </div>
           <h3 className="text-base font-bold text-slate-900 group-hover:text-brand-600 transition-colors truncate leading-tight">
             {project.name}
           </h3>
           {project.description && (
             <p className="text-xs text-slate-400 mt-1 line-clamp-1">{project.description}</p>
           )}
-        </div>
-        <div className="shrink-0">
-          <PresenceScore score={project.presenceScore} size={60} />
         </div>
       </div>
 
@@ -50,7 +65,7 @@ export default function ProjectCard({ project }: Props) {
           <p className="text-2xl font-bold text-slate-900 tabular-nums leading-none">
             {project.newMentionsCount.toLocaleString()}
           </p>
-          <p className="text-xs text-slate-400 mt-1.5 font-medium">New</p>
+          <p className="text-xs text-slate-400 mt-1.5 font-medium">Today</p>
         </div>
         <div className="text-center px-4">
           <p className="text-2xl font-bold text-slate-900 tabular-nums leading-none">

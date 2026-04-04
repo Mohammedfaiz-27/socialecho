@@ -17,10 +17,18 @@ export const projectService = {
       include: [{ model: TeamMember, as: 'teamMembers', include: [User] }],
     })
 
-    // Compute live newMentionsCount from MongoDB for all projects in one query
+    // Compute today's new mentions from MongoDB for all projects in one query
     const projectIds = rows.map((p) => p.id)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+
     const newCounts = await Mention.aggregate([
-      { $match: { projectId: { $in: projectIds }, 'metadata.status': 'new' } },
+      {
+        $match: {
+          projectId: { $in: projectIds },
+          'temporal.collectedAt': { $gte: todayStart },
+        },
+      },
       { $group: { _id: '$projectId', count: { $sum: 1 } } },
     ]) as Array<{ _id: string; count: number }>
     const newCountMap = new Map(newCounts.map((r) => [r._id, r.count]))
@@ -45,7 +53,9 @@ export const projectService = {
     })
     if (!project) throw Object.assign(new Error('Project not found'), { status: 404, code: 'NOT_FOUND' })
 
-    const newCount = await Mention.countDocuments({ projectId, 'metadata.status': 'new' })
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const newCount = await Mention.countDocuments({ projectId, 'temporal.collectedAt': { $gte: todayStart } })
     const plain = project.get({ plain: true }) as Record<string, unknown>
     const total = plain.totalMentionsCount as number ?? 0
     return {
@@ -55,7 +65,7 @@ export const projectService = {
     }
   },
 
-  async createProject(userId: string, name: string, description?: string) {
+  async createProject(userId: string, name: string, description?: string, projectType: 'own' | 'competitor' = 'own') {
     const existing = await Project.findOne({ where: { userId, name } })
     if (existing)
       throw Object.assign(new Error('This project name already exists. Please choose a different name.'), {
@@ -70,7 +80,7 @@ export const projectService = {
       description,
       keywords: [],
       socialConnections: {},
-      settings: {},
+      settings: { projectType },
     })
 
     // Auto-add creator as admin team member

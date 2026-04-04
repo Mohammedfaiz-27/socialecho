@@ -269,4 +269,129 @@ export const analyticsService = {
 
     return spikes
   },
+
+  async getWordCloud(projectId: string, from: string, to: string, limit = 60) {
+    const STOP_WORDS = new Set([
+      'the','a','an','and','or','but','in','on','at','to','for','of','with','by','from',
+      'is','are','was','were','be','been','being','have','has','had','do','does','did',
+      'will','would','could','should','may','might','can','this','that','these','those',
+      'i','you','he','she','it','we','they','me','him','her','us','them','my','your',
+      'his','its','our','their','not','no','so','as','if','than','then','just','about',
+      'more','also','into','out','up','what','all','when','how','which','who','there',
+      'here','get','got','via','new','one','two','over','after','now','like','very',
+      'much','many','some','any','been','its','amp','rt','https','http','www','com',
+    ])
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+
+    const mentions = await Mention.find({
+      projectId,
+      'temporal.publishedAt': { $gte: fromDate, $lte: toDate },
+    }).select('content.cleanText content.text').limit(500).lean()
+
+    const freq: Record<string, number> = {}
+    for (const m of mentions) {
+      const raw = (m as Record<string, unknown> & { content?: { cleanText?: string; text?: string } }).content
+      const text = (raw?.cleanText ?? raw?.text ?? '') as string
+      const words = text.toLowerCase().split(/\W+/).filter((w) => w.length > 3 && !STOP_WORDS.has(w))
+      for (const w of words) freq[w] = (freq[w] ?? 0) + 1
+    }
+
+    return Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([word, count]) => ({ word, count }))
+  },
+
+  async getLanguageBreakdown(projectId: string, from: string, to: string) {
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    const results = await Mention.aggregate([
+      { $match: { projectId, 'temporal.publishedAt': { $gte: fromDate, $lte: toDate } } },
+      { $group: { _id: '$analysis.language', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ])
+    const total = results.reduce((s: number, r: { count: number }) => s + r.count, 0) || 1
+    return results.map((r: { _id: string; count: number }) => ({
+      language: r._id || 'unknown',
+      count: r.count,
+      percent: Math.round((r.count / total) * 100),
+    }))
+  },
+
+  async getMentionHeatmap(projectId: string) {
+    const toDate = new Date()
+    const fromDate = new Date(toDate.getTime() - 365 * 24 * 60 * 60 * 1000)
+    const daily = await Mention.aggregate([
+      { $match: { projectId, 'temporal.publishedAt': { $gte: fromDate, $lte: toDate } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$temporal.publishedAt' } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ])
+    return daily.map((d: { _id: string; count: number }) => ({ date: d._id, count: d.count }))
+  },
+
+  async getGeoBreakdown(projectId: string, from: string, to: string) {
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    const results = await Mention.aggregate([
+      {
+        $match: {
+          projectId,
+          'temporal.publishedAt': { $gte: fromDate, $lte: toDate },
+          'analysis.geolocation.country': { $exists: true, $nin: [null, ''] },
+        },
+      },
+      { $group: { _id: '$analysis.geolocation.country', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 15 },
+    ])
+    const total = results.reduce((s: number, r: { count: number }) => s + r.count, 0) || 1
+    return results.map((r: { _id: string; count: number }) => ({
+      country: r._id,
+      count: r.count,
+      percent: Math.round((r.count / total) * 100),
+    }))
+  },
+
+  async getCompetitorComparison(projectId: string, competitors: string[], from: string, to: string) {
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    const results = await Promise.all(
+      competitors.map(async (name) => {
+        const agg = await Mention.aggregate([
+          {
+            $match: {
+              projectId,
+              'temporal.publishedAt': { $gte: fromDate, $lte: toDate },
+              'content.text': { $regex: name, $options: 'i' },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              reach: { $sum: '$author.followerCount' },
+              sentiments: { $push: '$analysis.sentiment' },
+            },
+          },
+        ])
+        const r = agg[0] ?? { count: 0, reach: 0, sentiments: [] }
+        const pos = (r.sentiments as string[]).filter((s) => s === 'positive').length
+        const total = (r.sentiments as string[]).length || 1
+        return {
+          name,
+          mentions: r.count as number,
+          reach: r.reach as number,
+          positivePercent: Math.round((pos / total) * 100),
+        }
+      })
+    )
+    return results
+  },
 }

@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { AnalyticsMetrics, Influencer, HashtagItem, KeywordPerformance, SpikeEvent } from '@/types'
+import type { AnalyticsMetrics, Influencer, HashtagItem, KeywordPerformance, SpikeEvent, WordCloudItem, LanguageItem, HeatmapDay, GeoItem, CompetitorItem } from '@/types'
 
 export const analyticsService = {
   async getMetrics(projectId: string, from: string, to: string): Promise<AnalyticsMetrics> {
@@ -60,6 +60,31 @@ export const analyticsService = {
       `/projects/${projectId}/analytics/spikes`,
       { params: { from, to } }
     )
+    return data.data
+  },
+
+  async getWordCloud(projectId: string, from: string, to: string): Promise<WordCloudItem[]> {
+    const { data } = await api.get<{ data: WordCloudItem[] }>(`/projects/${projectId}/analytics/wordcloud`, { params: { from, to } })
+    return data.data
+  },
+
+  async getLanguageBreakdown(projectId: string, from: string, to: string): Promise<LanguageItem[]> {
+    const { data } = await api.get<{ data: LanguageItem[] }>(`/projects/${projectId}/analytics/languages`, { params: { from, to } })
+    return data.data
+  },
+
+  async getMentionHeatmap(projectId: string): Promise<HeatmapDay[]> {
+    const { data } = await api.get<{ data: HeatmapDay[] }>(`/projects/${projectId}/analytics/heatmap`)
+    return data.data
+  },
+
+  async getGeoBreakdown(projectId: string, from: string, to: string): Promise<GeoItem[]> {
+    const { data } = await api.get<{ data: GeoItem[] }>(`/projects/${projectId}/analytics/geo`, { params: { from, to } })
+    return data.data
+  },
+
+  async getCompetitors(projectId: string, names: string[], from: string, to: string): Promise<CompetitorItem[]> {
+    const { data } = await api.get<{ data: CompetitorItem[] }>(`/projects/${projectId}/analytics/competitors`, { params: { from, to, names: names.join(',') } })
     return data.data
   },
 

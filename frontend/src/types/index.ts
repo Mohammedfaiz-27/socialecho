@@ -84,6 +84,7 @@ export interface Project {
   keywords: Keyword[]
   socialConnections: SocialConnection[]
   teamMembers: TeamMember[]
+  settings?: Record<string, unknown>
   createdAt: string
   updatedAt: string
   lastMentionAt?: string
@@ -318,6 +319,12 @@ export interface SpikeEvent {
   average: number
   ratio: number
 }
+
+export interface WordCloudItem { word: string; count: number }
+export interface LanguageItem { language: string; count: number; percent: number }
+export interface HeatmapDay { date: string; count: number }
+export interface GeoItem { country: string; count: number; percent: number }
+export interface CompetitorItem { name: string; mentions: number; reach: number; positivePercent: number }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API Helpers

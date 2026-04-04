@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { subDays, formatISO, format } from 'date-fns'
 import { useAppDispatch } from '@/hooks/useAppDispatch'
@@ -7,8 +7,13 @@ import { fetchAnalytics } from '@/store/slices/analyticsSlice'
 import MetricCard from '@/components/analytics/MetricCard'
 import MentionsChart from '@/components/analytics/MentionsChart'
 import SentimentChart from '@/components/analytics/SentimentChart'
+import WordCloud from '@/components/analytics/WordCloud'
+import LanguageChart from '@/components/analytics/LanguageChart'
+import MentionHeatmap from '@/components/analytics/MentionHeatmap'
+import GeoBreakdown from '@/components/analytics/GeoBreakdown'
+import DateRangePicker from '@/components/common/DateRangePicker'
 import { analyticsService } from '@/services/analyticsService'
-import type { HashtagItem, KeywordPerformance, SpikeEvent } from '@/types'
+import type { HashtagItem, KeywordPerformance, SpikeEvent, WordCloudItem, LanguageItem, HeatmapDay, GeoItem, CompetitorItem } from '@/types'
 import clsx from 'clsx'
 
 const PERIODS: { label: string; days: number }[] = [
@@ -25,52 +30,104 @@ function fmt(n: number) {
 
 export default function AnalyticsPage() {
   const { projectId } = useParams<{ projectId: string }>()
+  const currentProject = useAppSelector((s) => s.projects.currentProject)
   const dispatch = useAppDispatch()
   const { metrics, isLoading } = useAppSelector((s) => s.analytics)
-  const [period, setPeriod] = useState(30)
+  const [period, setPeriod] = useState<number | null>(30)
+  const [customFrom, setCustomFrom] = useState<Date | null>(null)
+  const [customTo, setCustomTo] = useState<Date | null>(null)
+  const [showPicker, setShowPicker] = useState(false)
+  const pickerRef = useRef<HTMLDivElement>(null)
 
   const [hashtags, setHashtags] = useState<HashtagItem[]>([])
   const [keywords, setKeywords] = useState<KeywordPerformance[]>([])
   const [spikes, setSpikes] = useState<SpikeEvent[]>([])
+  const [words, setWords] = useState<WordCloudItem[]>([])
+  const [languages, setLanguages] = useState<LanguageItem[]>([])
+  const [heatmap, setHeatmap] = useState<HeatmapDay[]>([])
+  const [geo, setGeo] = useState<GeoItem[]>([])
+  const [competitors, setCompetitors] = useState<CompetitorItem[]>([])
 
-  const from = formatISO(subDays(new Date(), period))
-  const to = formatISO(new Date())
+  const from = customFrom ? formatISO(customFrom) : formatISO(subDays(new Date(), period ?? 30))
+  const to = customTo ? formatISO(customTo) : formatISO(new Date())
 
   useEffect(() => {
     if (!projectId) return
     dispatch(fetchAnalytics({ projectId, from, to }))
 
+    const competitorNames = ((currentProject?.settings as Record<string, unknown>)?.competitors as string[]) ?? []
+
     Promise.all([
       analyticsService.getTopHashtags(projectId, from, to),
       analyticsService.getKeywordPerformance(projectId, from, to),
       analyticsService.getSpikes(projectId, from, to),
-    ]).then(([h, k, s]) => {
+      analyticsService.getWordCloud(projectId, from, to),
+      analyticsService.getLanguageBreakdown(projectId, from, to),
+      analyticsService.getMentionHeatmap(projectId),
+      analyticsService.getGeoBreakdown(projectId, from, to),
+      competitorNames.length ? analyticsService.getCompetitors(projectId, competitorNames, from, to) : Promise.resolve([]),
+    ]).then(([h, k, s, w, l, hm, g, c]) => {
       setHashtags(h)
       setKeywords(k)
       setSpikes(s)
+      setWords(w)
+      setLanguages(l)
+      setHeatmap(hm)
+      setGeo(g)
+      setCompetitors(c)
     }).catch(() => {})
-  }, [projectId, period]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectId, from, to]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">Analytics</h1>
-        <div className="flex items-center gap-1 bg-slate-200 p-1 rounded-lg">
-          {PERIODS.map(({ label, days }) => (
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Analytics</h1>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-slate-200 dark:bg-slate-800 p-1 rounded-lg">
+            {PERIODS.map(({ label, days }) => (
+              <button
+                key={days}
+                onClick={() => { setPeriod(days); setCustomFrom(null); setCustomTo(null) }}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  period === days && !customFrom
+                    ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* Custom date range */}
+          <div className="relative" ref={pickerRef}>
             <button
-              key={days}
-              onClick={() => setPeriod(days)}
+              onClick={() => setShowPicker((v) => !v)}
               className={clsx(
-                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                period === days
-                  ? 'bg-white text-brand-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors',
+                customFrom
+                  ? 'bg-brand-600 text-white border-brand-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
               )}
             >
-              {label}
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {customFrom && customTo
+                ? `${format(customFrom, 'MMM d')} – ${format(customTo, 'MMM d')}`
+                : 'Custom'}
             </button>
-          ))}
+            {showPicker && (
+              <DateRangePicker
+                from={customFrom}
+                to={customTo}
+                onChange={(f, t) => { setCustomFrom(f); setCustomTo(t); setPeriod(null) }}
+                onClose={() => setShowPicker(false)}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -279,14 +336,14 @@ export default function AnalyticsPage() {
 
           {/* Source breakdown */}
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4">Source Breakdown</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4">Source Breakdown</h3>
             <div className="space-y-2.5">
               {metrics.sourceBreakdown.map((src) => {
                 const pct = metrics.totalMentions ? Math.round((src.count / metrics.totalMentions) * 100) : 0
                 return (
                   <div key={src.platform} className="flex items-center gap-3">
                     <span className="text-xs text-slate-500 w-20 capitalize font-medium">{src.platform}</span>
-                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                       <div className="h-full bg-brand-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
                     <span className="text-xs text-slate-500 w-12 text-right tabular-nums">{src.count.toLocaleString()}</span>
@@ -296,6 +353,91 @@ export default function AnalyticsPage() {
               })}
             </div>
           </div>
+
+          {/* Mention Heatmap */}
+          {heatmap.length > 0 && (
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4">Mention Volume — Last 12 Months</h3>
+              <MentionHeatmap days={heatmap} />
+            </div>
+          )}
+
+          {/* Word Cloud + Language breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 card p-5">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4">Word Cloud</h3>
+              {words.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">Not enough data to generate word cloud</p>
+              ) : (
+                <WordCloud words={words} />
+              )}
+            </div>
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4">Language Breakdown</h3>
+              {languages.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">No language data available</p>
+              ) : (
+                <LanguageChart languages={languages} />
+              )}
+            </div>
+          </div>
+
+          {/* Geo Breakdown */}
+          {geo.length > 0 && (
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4">Geographic Distribution</h3>
+              <GeoBreakdown geo={geo} />
+            </div>
+          )}
+
+          {/* Competitor Comparison */}
+          {competitors.length > 0 && (
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4">Competitor Comparison</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-700">
+                      <th className="pb-3 pr-4">Competitor</th>
+                      <th className="pb-3 pr-4 text-right">Mentions</th>
+                      <th className="pb-3 pr-4 text-right">Reach</th>
+                      <th className="pb-3 pr-4 text-right">Avg Sentiment</th>
+                      <th className="pb-3">Volume</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                    {competitors.map((c) => {
+                      const maxMentions = competitors[0].mentions
+                      const pct = maxMentions ? Math.round((c.mentions / maxMentions) * 100) : 0
+                      const sentColor =
+                        c.positivePercent >= 60 ? 'text-emerald-600' :
+                        c.positivePercent <= 30 ? 'text-red-500' : 'text-slate-500'
+                      const sentLabel =
+                        c.positivePercent >= 60 ? 'Positive' :
+                        c.positivePercent <= 30 ? 'Negative' : 'Neutral'
+                      return (
+                        <tr key={c.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="py-3 pr-4">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{c.name}</span>
+                          </td>
+                          <td className="py-3 pr-4 text-right font-semibold text-slate-700 dark:text-slate-300">
+                            {c.mentions.toLocaleString()}
+                          </td>
+                          <td className="py-3 pr-4 text-right text-slate-500">{fmt(c.reach)}</td>
+                          <td className={`py-3 pr-4 text-right font-medium ${sentColor}`}>{sentLabel} ({c.positivePercent}%)</td>
+                          <td className="py-3">
+                            <div className="w-24 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <div className="h-full bg-brand-400 rounded-full" style={{ width: `${pct}%` }} />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

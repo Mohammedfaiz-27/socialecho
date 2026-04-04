@@ -33,7 +33,7 @@ export default function LoginPage() {
                 d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h2 className="text-3xl font-bold text-white mb-3">SocialEcho</h2>
+          <h2 className="text-3xl font-bold text-white mb-3">Smart Radar</h2>
           <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
             Real-time social listening and brand monitoring. Track mentions, analyze sentiment, and measure impact.
           </p>
@@ -64,7 +64,7 @@ export default function LoginPage() {
                   d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <span className="font-bold text-slate-900">SocialEcho</span>
+            <span className="font-bold text-slate-900">Smart Radar</span>
           </div>
 
           <h1 className="text-2xl font-bold text-slate-900">Sign in</h1>

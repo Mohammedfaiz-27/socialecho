@@ -13,6 +13,7 @@ router.use(authenticate)
 const createSchema = Joi.object({
   name: Joi.string().min(1).max(100).required(),
   description: Joi.string().max(1000).allow('').optional(),
+  projectType: Joi.string().valid('own', 'competitor').default('own'),
 })
 
 const updateSchema = Joi.object({
@@ -42,7 +43,8 @@ router.post('/', validate(createSchema), async (req: AuthRequest, res, next) => 
     const project = await projectService.createProject(
       req.user!.userId,
       req.body.name,
-      req.body.description
+      req.body.description,
+      req.body.projectType
     )
     success(res, project, 201)
   } catch (err) { next(err) }

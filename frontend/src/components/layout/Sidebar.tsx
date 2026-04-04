@@ -92,7 +92,7 @@ export default function Sidebar() {
                 d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <span className="text-white font-bold text-sm tracking-tight">SocialEcho</span>
+          <span className="text-white font-bold text-sm tracking-tight">Smart Radar</span>
         </NavLink>
       </div>
 
