@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { analyticsService } from '../services/analytics.service'
+import { aiService } from '../services/ai.service'
 import { Mention } from '../models/mongo/Mention'
 import { authenticate } from '../middleware/auth'
 import { success, error } from '../utils/response'
@@ -68,6 +69,43 @@ router.get('/export', async (req: AuthRequest, res, next) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="mentions-${fromDate}-to-${toDate}.csv"`)
     res.send(csv)
+  } catch (err) { next(err) }
+})
+
+router.get('/hashtags', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+    const limit = parseInt(req.query.limit as string ?? '20', 10)
+    const data = await analyticsService.getTopHashtags(req.params.projectId, from, to, limit)
+    success(res, data)
+  } catch (err) { next(err) }
+})
+
+router.get('/keywords', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+    const data = await analyticsService.getKeywordPerformance(req.params.projectId, from, to)
+    success(res, data)
+  } catch (err) { next(err) }
+})
+
+router.get('/spikes', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+    const data = await analyticsService.getSpikeDetection(req.params.projectId, from, to)
+    success(res, data)
+  } catch (err) { next(err) }
+})
+
+router.post('/ai-summary', async (req: AuthRequest, res, next) => {
+  try {
+    const to = (req.query.to as string) ?? formatISO(new Date())
+    const from = (req.query.from as string) ?? formatISO(subDays(new Date(), 30))
+    const summary = await aiService.generateSummary(req.params.projectId, from, to)
+    success(res, { summary })
   } catch (err) { next(err) }
 })
 

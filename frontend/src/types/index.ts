@@ -296,6 +296,30 @@ export interface AnalyticsMetrics {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Analytics extras
+// ─────────────────────────────────────────────────────────────────────────────
+export interface HashtagItem {
+  tag: string
+  count: number
+}
+
+export interface KeywordPerformance {
+  keyword: string
+  mentions: number
+  reach: number
+  avgInfluence: number
+  positivePercent: number
+  negativePercent: number
+}
+
+export interface SpikeEvent {
+  date: string
+  count: number
+  average: number
+  ratio: number
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 export interface PaginatedResponse<T> {

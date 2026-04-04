@@ -10,6 +10,7 @@ import AnalyticsPage from '@/pages/analytics/AnalyticsPage'
 import InfluencersPage from '@/pages/influencers/InfluencersPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
 import ReportsPage from '@/pages/reports/ReportsPage'
+import AISummaryPage from '@/pages/ai/AISummaryPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="projects/:projectId/influencers" element={<InfluencersPage />} />
         <Route path="projects/:projectId/settings" element={<SettingsPage />} />
         <Route path="projects/:projectId/reports" element={<ReportsPage />} />
+        <Route path="projects/:projectId/ai-summary" element={<AISummaryPage />} />
       </Route>
 
       {/* Catch-all */}

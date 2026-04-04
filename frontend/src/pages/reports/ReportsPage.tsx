@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { subDays, formatISO, format } from 'date-fns'
 import { useAppSelector } from '@/hooks/useAppSelector'
@@ -44,6 +44,9 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [aiSummary, setAiSummary] = useState<string>('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   const toISO = formatISO(new Date())
   const fromISO = formatISO(subDays(new Date(), period))
@@ -68,6 +71,24 @@ export default function ReportsPage() {
       setIsExporting(false)
     }
   }
+
+  function handlePdfExport() {
+    window.print()
+  }
+
+  const handleAiSummary = useCallback(async () => {
+    if (!projectId || aiLoading) return
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const summary = await analyticsService.generateAiSummary(projectId, fromISO, toISO)
+      setAiSummary(summary)
+    } catch {
+      setAiError('Failed to generate summary. Check your Gemini API key in .env.')
+    } finally {
+      setAiLoading(false)
+    }
+  }, [projectId, fromISO, toISO, aiLoading])
 
   const fromLabel = format(subDays(new Date(), period), 'MMM d, yyyy')
   const toLabel = format(new Date(), 'MMM d, yyyy')
@@ -100,9 +121,20 @@ export default function ReportsPage() {
             ))}
           </div>
           <button
+            onClick={handlePdfExport}
+            disabled={!metrics}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors print:hidden"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Export PDF
+          </button>
+          <button
             onClick={handleExport}
             disabled={isExporting || !metrics}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors print:hidden"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -150,6 +182,37 @@ export default function ReportsPage() {
                 <p className="text-2xl font-bold text-slate-900">{value}</p>
               </div>
             ))}
+          </div>
+
+          {/* AI Summary */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 print:break-inside-avoid">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-violet-100 flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm font-semibold text-slate-800">AI-Generated Report Summary</h3>
+                <span className="text-[10px] px-1.5 py-0.5 bg-violet-100 text-violet-600 rounded font-semibold">Gemini</span>
+              </div>
+              <button
+                onClick={handleAiSummary}
+                disabled={aiLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors disabled:opacity-50 print:hidden"
+              >
+                {aiLoading ? 'Generating…' : aiSummary ? 'Regenerate' : 'Generate with AI'}
+              </button>
+            </div>
+            {aiError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{aiError}</p>}
+            {aiSummary ? (
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{aiSummary}</p>
+            ) : !aiLoading && !aiError && (
+              <p className="text-sm text-slate-400 text-center py-4">
+                Generate an AI summary to include in your report
+              </p>
+            )}
           </div>
 
           {/* Sentiment */}

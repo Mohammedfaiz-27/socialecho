@@ -182,4 +182,91 @@ export const analyticsService = {
     await cache.set(cacheKey, metrics, 300)
     return metrics
   },
+
+  async getTopHashtags(projectId: string, from: string, to: string, limit = 20) {
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    const results = await Mention.aggregate([
+      { $match: { projectId, 'temporal.publishedAt': { $gte: fromDate, $lte: toDate }, 'analysis.hashtags': { $exists: true, $ne: [] } } },
+      { $unwind: '$analysis.hashtags' },
+      { $group: { _id: { $toLower: '$analysis.hashtags' }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: limit },
+    ])
+    return results.map((r: { _id: string; count: number }) => ({ tag: r._id, count: r.count }))
+  },
+
+  async getKeywordPerformance(projectId: string, from: string, to: string) {
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    const results = await Mention.aggregate([
+      { $match: { projectId, 'temporal.publishedAt': { $gte: fromDate, $lte: toDate }, 'analysis.keywordsMatched': { $exists: true, $ne: [] } } },
+      { $unwind: '$analysis.keywordsMatched' },
+      {
+        $group: {
+          _id: '$analysis.keywordsMatched',
+          mentions: { $sum: 1 },
+          reach: { $sum: '$author.followerCount' },
+          avgInfluence: { $avg: '$analysis.influenceScore' },
+          sentiments: { $push: '$analysis.sentiment' },
+        },
+      },
+      { $sort: { mentions: -1 } },
+      { $limit: 20 },
+    ])
+    return results.map((r: { _id: string; mentions: number; reach: number; avgInfluence: number; sentiments: string[] }) => {
+      const pos = r.sentiments.filter((s) => s === 'positive').length
+      const neg = r.sentiments.filter((s) => s === 'negative').length
+      const total = r.sentiments.length || 1
+      return {
+        keyword: r._id,
+        mentions: r.mentions,
+        reach: r.reach,
+        avgInfluence: Math.round(r.avgInfluence * 10) / 10,
+        positivePercent: Math.round((pos / total) * 100),
+        negativePercent: Math.round((neg / total) * 100),
+      }
+    })
+  },
+
+  async getSpikeDetection(projectId: string, from: string, to: string) {
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    // Extend lookback to 7 days before range for baseline
+    const lookbackFrom = new Date(fromDate.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    const daily = await Mention.aggregate([
+      { $match: { projectId, 'temporal.publishedAt': { $gte: lookbackFrom, $lte: toDate } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$temporal.publishedAt' } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ])
+
+    const countMap = new Map(daily.map((d: { _id: string; count: number }) => [d._id, d.count]))
+    const days = eachDayOfInterval({ start: fromDate, end: toDate })
+
+    const spikes: Array<{ date: string; count: number; average: number; ratio: number }> = []
+
+    for (const day of days) {
+      const key = format(day, 'yyyy-MM-dd')
+      const count = countMap.get(key) ?? 0
+
+      // Rolling 7-day average (days before this day)
+      const prev7 = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(day.getTime() - (i + 1) * 24 * 60 * 60 * 1000)
+        return countMap.get(format(d, 'yyyy-MM-dd')) ?? 0
+      })
+      const avg = prev7.reduce((a, b) => a + b, 0) / 7
+
+      if (avg > 0 && count >= avg * 2.5 && count >= 5) {
+        spikes.push({ date: key, count, average: Math.round(avg), ratio: Math.round((count / avg) * 10) / 10 })
+      }
+    }
+
+    return spikes
+  },
 }

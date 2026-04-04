@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { subDays, formatISO } from 'date-fns'
+import { subDays, formatISO, format } from 'date-fns'
 import { useAppDispatch } from '@/hooks/useAppDispatch'
 import { useAppSelector } from '@/hooks/useAppSelector'
 import { fetchAnalytics } from '@/store/slices/analyticsSlice'
 import MetricCard from '@/components/analytics/MetricCard'
 import MentionsChart from '@/components/analytics/MentionsChart'
 import SentimentChart from '@/components/analytics/SentimentChart'
+import { analyticsService } from '@/services/analyticsService'
+import type { HashtagItem, KeywordPerformance, SpikeEvent } from '@/types'
 import clsx from 'clsx'
 
 const PERIODS: { label: string; days: number }[] = [
@@ -15,26 +17,46 @@ const PERIODS: { label: string; days: number }[] = [
   { label: '90d', days: 90 },
 ]
 
+function fmt(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return n.toLocaleString()
+}
+
 export default function AnalyticsPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const dispatch = useAppDispatch()
   const { metrics, isLoading } = useAppSelector((s) => s.analytics)
   const [period, setPeriod] = useState(30)
 
+  const [hashtags, setHashtags] = useState<HashtagItem[]>([])
+  const [keywords, setKeywords] = useState<KeywordPerformance[]>([])
+  const [spikes, setSpikes] = useState<SpikeEvent[]>([])
+
+  const from = formatISO(subDays(new Date(), period))
+  const to = formatISO(new Date())
+
   useEffect(() => {
-    if (projectId) {
-      const to = formatISO(new Date())
-      const from = formatISO(subDays(new Date(), period))
-      dispatch(fetchAnalytics({ projectId, from, to }))
-    }
-  }, [projectId, period, dispatch])
+    if (!projectId) return
+    dispatch(fetchAnalytics({ projectId, from, to }))
+
+    Promise.all([
+      analyticsService.getTopHashtags(projectId, from, to),
+      analyticsService.getKeywordPerformance(projectId, from, to),
+      analyticsService.getSpikes(projectId, from, to),
+    ]).then(([h, k, s]) => {
+      setHashtags(h)
+      setKeywords(k)
+      setSpikes(s)
+    }).catch(() => {})
+  }, [projectId, period]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-900">Analytics</h1>
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-slate-200 p-1 rounded-lg">
           {PERIODS.map(({ label, days }) => (
             <button
               key={days}
@@ -51,6 +73,32 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </div>
+
+      {/* Spike alerts */}
+      {spikes.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-amber-500 mt-0.5">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">
+                {spikes.length} mention spike{spikes.length > 1 ? 's' : ''} detected
+              </p>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {spikes.map((s) => (
+                  <span key={s.date} className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                    {format(new Date(s.date), 'MMM d')} — {s.count} mentions ({s.ratio}× avg)
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex items-center justify-center h-64">
@@ -76,11 +124,7 @@ export default function AnalyticsPage() {
             />
             <MetricCard
               label="Total Reach"
-              value={
-                metrics.totalReach >= 1_000_000
-                  ? `${(metrics.totalReach / 1_000_000).toFixed(1)}M`
-                  : `${(metrics.totalReach / 1000).toFixed(1)}K`
-              }
+              value={fmt(metrics.totalReach)}
               accent="purple"
               icon={
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -91,13 +135,7 @@ export default function AnalyticsPage() {
             />
             <MetricCard
               label="Media Value (AVE)"
-              value={
-                (metrics.mediaValue ?? 0) >= 1_000_000
-                  ? `$${((metrics.mediaValue ?? 0) / 1_000_000).toFixed(1)}M`
-                  : (metrics.mediaValue ?? 0) >= 1_000
-                    ? `$${((metrics.mediaValue ?? 0) / 1000).toFixed(1)}K`
-                    : `$${(metrics.mediaValue ?? 0).toLocaleString()}`
-              }
+              value={`$${fmt(metrics.mediaValue ?? 0)}`}
               accent="amber"
               icon={
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -119,41 +157,83 @@ export default function AnalyticsPage() {
             />
           </div>
 
-          {/* Secondary metric cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
-            <MetricCard
-              label="Presence Score"
-              value={`${metrics.presenceScore}/100`}
-              accent="blue"
-              icon={
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              }
-            />
-            <MetricCard
-              label="Avg Engagement"
-              value={`${metrics.avgEngagementRate.toFixed(1)}%`}
-              accent="purple"
-              icon={
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                    d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              }
-            />
-          </div>
-
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
-              <MentionsChart
-                mentionsTrend={metrics.mentionsTrend}
-                reachTrend={metrics.reachTrend}
-              />
+              <MentionsChart mentionsTrend={metrics.mentionsTrend} reachTrend={metrics.reachTrend} />
             </div>
             <SentimentChart breakdown={metrics.sentimentBreakdown} />
+          </div>
+
+          {/* Keyword performance + Hashtags */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Keyword performance */}
+            <div className="lg:col-span-2 card p-5">
+              <h3 className="text-sm font-semibold text-slate-800 mb-4">Keyword Performance</h3>
+              {keywords.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">No keyword data for this period</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                        <th className="pb-3 pr-4">Keyword</th>
+                        <th className="pb-3 pr-4 text-right">Mentions</th>
+                        <th className="pb-3 pr-4 text-right">Reach</th>
+                        <th className="pb-3">Sentiment</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {keywords.map((kw) => (
+                        <tr key={kw.keyword} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-2.5 pr-4">
+                            <span className="font-medium text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-xs">
+                              {kw.keyword}
+                            </span>
+                          </td>
+                          <td className="py-2.5 pr-4 text-right font-semibold text-slate-700">{kw.mentions.toLocaleString()}</td>
+                          <td className="py-2.5 pr-4 text-right text-slate-500">{fmt(kw.reach)}</td>
+                          <td className="py-2.5">
+                            <div className="flex items-center gap-1">
+                              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                                <div className="h-full bg-emerald-400 rounded-l-full" style={{ width: `${kw.positivePercent}%` }} />
+                                <div className="h-full bg-red-400" style={{ width: `${kw.negativePercent}%` }} />
+                              </div>
+                              <span className="text-xs text-emerald-600 font-medium w-8 text-right">{kw.positivePercent}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Top hashtags */}
+            <div className="card p-5">
+              <h3 className="text-sm font-semibold text-slate-800 mb-4">Top Hashtags</h3>
+              {hashtags.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">No hashtags found</p>
+              ) : (
+                <div className="space-y-2">
+                  {hashtags.slice(0, 12).map((h, i) => {
+                    const maxCount = hashtags[0].count
+                    const pct = Math.round((h.count / maxCount) * 100)
+                    return (
+                      <div key={h.tag} className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 w-4 tabular-nums">{i + 1}</span>
+                        <span className="text-xs font-medium text-brand-600 truncate flex-1">#{h.tag}</span>
+                        <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-brand-400 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs text-slate-500 tabular-nums w-8 text-right">{h.count}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Top Influencers */}
@@ -176,7 +256,7 @@ export default function AnalyticsPage() {
                       <td className="py-2.5 pr-4">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-xs font-bold">
-                            {inf.displayName[0].toUpperCase()}
+                            {(inf.displayName || inf.username || '?')[0].toUpperCase()}
                           </div>
                           <div>
                             <p className="font-medium text-slate-800">{inf.displayName}</p>
@@ -184,21 +264,11 @@ export default function AnalyticsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-2.5 pr-4 text-slate-600">
-                        {inf.followerCount >= 1000
-                          ? `${(inf.followerCount / 1000).toFixed(0)}K`
-                          : inf.followerCount}
-                      </td>
+                      <td className="py-2.5 pr-4 text-slate-600">{fmt(inf.followerCount)}</td>
                       <td className="py-2.5 pr-4 text-slate-600">{inf.mentionCount}</td>
-                      <td className="py-2.5 pr-4 text-slate-600">
-                        {inf.totalReach >= 1000
-                          ? `${(inf.totalReach / 1000).toFixed(0)}K`
-                          : inf.totalReach}
-                      </td>
+                      <td className="py-2.5 pr-4 text-slate-600">{fmt(inf.totalReach)}</td>
                       <td className="py-2.5">
-                        <span className="font-semibold text-brand-700">
-                          {inf.influenceScore.toFixed(1)}
-                        </span>
+                        <span className="font-semibold text-brand-700">{inf.influenceScore.toFixed(1)}</span>
                       </td>
                     </tr>
                   ))}
@@ -210,23 +280,16 @@ export default function AnalyticsPage() {
           {/* Source breakdown */}
           <div className="card p-5">
             <h3 className="text-sm font-semibold text-slate-800 mb-4">Source Breakdown</h3>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {metrics.sourceBreakdown.map((src) => {
-                const pct = metrics.totalMentions
-                  ? Math.round((src.count / metrics.totalMentions) * 100)
-                  : 0
+                const pct = metrics.totalMentions ? Math.round((src.count / metrics.totalMentions) * 100) : 0
                 return (
                   <div key={src.platform} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500 w-20 capitalize">{src.platform}</span>
+                    <span className="text-xs text-slate-500 w-20 capitalize font-medium">{src.platform}</span>
                     <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-brand-400 rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="h-full bg-brand-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="text-xs text-slate-500 w-12 text-right">
-                      {src.count.toLocaleString()}
-                    </span>
+                    <span className="text-xs text-slate-500 w-12 text-right tabular-nums">{src.count.toLocaleString()}</span>
                     <span className="text-xs text-slate-400 w-8 text-right">{pct}%</span>
                   </div>
                 )

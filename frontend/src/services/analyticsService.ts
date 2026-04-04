@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { AnalyticsMetrics, Influencer } from '@/types'
+import type { AnalyticsMetrics, Influencer, HashtagItem, KeywordPerformance, SpikeEvent } from '@/types'
 
 export const analyticsService = {
   async getMetrics(projectId: string, from: string, to: string): Promise<AnalyticsMetrics> {
@@ -37,6 +37,39 @@ export const analyticsService = {
       params: { from, to },
     })
     return data.data
+  },
+
+  async getTopHashtags(projectId: string, from: string, to: string): Promise<HashtagItem[]> {
+    const { data } = await api.get<{ data: HashtagItem[] }>(
+      `/projects/${projectId}/analytics/hashtags`,
+      { params: { from, to } }
+    )
+    return data.data
+  },
+
+  async getKeywordPerformance(projectId: string, from: string, to: string): Promise<KeywordPerformance[]> {
+    const { data } = await api.get<{ data: KeywordPerformance[] }>(
+      `/projects/${projectId}/analytics/keywords`,
+      { params: { from, to } }
+    )
+    return data.data
+  },
+
+  async getSpikes(projectId: string, from: string, to: string): Promise<SpikeEvent[]> {
+    const { data } = await api.get<{ data: SpikeEvent[] }>(
+      `/projects/${projectId}/analytics/spikes`,
+      { params: { from, to } }
+    )
+    return data.data
+  },
+
+  async generateAiSummary(projectId: string, from: string, to: string): Promise<string> {
+    const { data } = await api.post<{ data: { summary: string } }>(
+      `/projects/${projectId}/analytics/ai-summary`,
+      {},
+      { params: { from, to } }
+    )
+    return data.data.summary
   },
 
   async exportCSV(projectId: string, from: string, to: string): Promise<void> {
