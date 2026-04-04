@@ -145,6 +145,9 @@ export interface MentionEngagement {
   capturedAt: string
 }
 
+export type EmotionType = 'joy' | 'anger' | 'fear' | 'sadness' | 'surprise' | 'disgust' | 'neutral'
+export type IntentType = 'complaint' | 'question' | 'praise' | 'purchase_intent' | 'general'
+
 export interface MentionAnalysis {
   sentiment: SentimentType
   sentimentConfidence: number
@@ -156,6 +159,8 @@ export interface MentionAnalysis {
   influenceScore: number
   topics: string[]
   geolocation?: { country: string; region?: string; city?: string }
+  emotion?: EmotionType
+  intent?: IntentType
 }
 
 export interface Mention {
@@ -287,6 +292,7 @@ export interface AnalyticsMetrics {
   topInfluencers: Influencer[]
   presenceScore: number
   growthRate: number
+  mediaValue: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

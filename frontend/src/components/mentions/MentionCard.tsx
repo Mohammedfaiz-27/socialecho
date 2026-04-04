@@ -1,11 +1,37 @@
 import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import type { Mention } from '@/types'
+import type { Mention, EmotionType, IntentType } from '@/types'
 import SentimentBadge from '@/components/common/SentimentBadge'
 import InfluenceScore from '@/components/common/InfluenceScore'
 import PlatformIcon from '@/components/common/PlatformIcon'
 import { useAppDispatch } from '@/hooks/useAppDispatch'
 import { toggleStarMention } from '@/store/slices/mentionSlice'
+
+const EMOTION_STYLES: Record<EmotionType, string> = {
+  joy:      'bg-yellow-50 text-yellow-700',
+  anger:    'bg-red-50 text-red-700',
+  fear:     'bg-purple-50 text-purple-700',
+  sadness:  'bg-blue-50 text-blue-700',
+  surprise: 'bg-orange-50 text-orange-700',
+  disgust:  'bg-green-50 text-green-700',
+  neutral:  'bg-slate-100 text-slate-600',
+}
+
+const EMOTION_ICONS: Record<EmotionType, string> = {
+  joy: '😊', anger: '😠', fear: '😨', sadness: '😢', surprise: '😲', disgust: '🤢', neutral: '',
+}
+
+const INTENT_STYLES: Record<IntentType, string> = {
+  complaint:      'bg-red-50 text-red-600',
+  question:       'bg-sky-50 text-sky-700',
+  praise:         'bg-emerald-50 text-emerald-700',
+  purchase_intent:'bg-violet-50 text-violet-700',
+  general:        'bg-slate-100 text-slate-500',
+}
+
+const INTENT_ICONS: Record<IntentType, string> = {
+  complaint: '⚠️', question: '❓', praise: '👍', purchase_intent: '🛒', general: '',
+}
 
 interface Props {
   mention: Mention
@@ -120,6 +146,22 @@ export default function MentionCard({ mention, projectId, onOpen }: Props) {
               #{tag}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Emotion + Intent badges */}
+      {(mention.analysis.emotion || mention.analysis.intent) && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {mention.analysis.emotion && mention.analysis.emotion !== 'neutral' && (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${EMOTION_STYLES[mention.analysis.emotion] ?? 'bg-slate-100 text-slate-600'}`}>
+              {EMOTION_ICONS[mention.analysis.emotion]} {mention.analysis.emotion}
+            </span>
+          )}
+          {mention.analysis.intent && mention.analysis.intent !== 'general' && (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${INTENT_STYLES[mention.analysis.intent] ?? 'bg-slate-100 text-slate-600'}`}>
+              {INTENT_ICONS[mention.analysis.intent]} {mention.analysis.intent.replace('_', ' ')}
+            </span>
+          )}
         </div>
       )}
 

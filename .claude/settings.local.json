@@ -5,7 +5,8 @@
       "Bash(mongosh socialecho:*)",
       "Bash(mongosh --eval \"db.adminCommand\\({listDatabases: 1}\\)\")",
       "mcp__ide__getDiagnostics",
-      "Bash(find 'F:/newsit/social media/frontend/src' -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))"
+      "Bash(find 'F:/newsit/social media/frontend/src' -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
+      "Bash(npx tsc:*)"
     ]
   }
 }

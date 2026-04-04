@@ -55,6 +55,8 @@ export interface IMention extends Document {
     influenceScore: number
     topics: string[]
     geolocation?: { country: string; region?: string; city?: string }
+    emotion: string
+    intent: string
   }
   metadata: {
     tags: string[]
@@ -62,6 +64,7 @@ export interface IMention extends Document {
     status: string
     isStarred: boolean
     lastUpdated: Date
+    isSpam?: boolean
   }
 }
 
@@ -121,6 +124,8 @@ const MentionSchema = new Schema<IMention>(
       influenceScore: { type: Number, default: 0 },
       topics: [String],
       geolocation: { country: String, region: String, city: String },
+      emotion: { type: String, default: 'neutral' },
+      intent: { type: String, default: 'general' },
     },
     metadata: {
       tags: { type: [String], default: [] },
@@ -132,6 +137,7 @@ const MentionSchema = new Schema<IMention>(
       },
       isStarred: { type: Boolean, default: false },
       lastUpdated: { type: Date, default: Date.now },
+      isSpam: { type: Boolean, default: false },
     },
   },
   { timestamps: true }

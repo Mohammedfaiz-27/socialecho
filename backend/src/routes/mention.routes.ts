@@ -1,12 +1,24 @@
 import { Router } from 'express'
 import { mentionService } from '../services/mention.service'
 import { authenticate } from '../middleware/auth'
-import { success, paginated } from '../utils/response'
+import { success, paginated, error } from '../utils/response'
+import { Project } from '../models/postgres/Project'
 import type { AuthRequest } from '../types'
 
 const router = Router({ mergeParams: true })
 
 router.use(authenticate)
+
+// Verify the requesting user owns the project before any mention access
+router.use(async (req: AuthRequest, res, next) => {
+  try {
+    const project = await Project.findOne({
+      where: { id: req.params.projectId, userId: req.user!.userId },
+    })
+    if (!project) { error(res, 'Project not found', 'NOT_FOUND', 404); return }
+    next()
+  } catch (err) { next(err) }
+})
 
 // List mentions with filters
 router.get('/', async (req: AuthRequest, res, next) => {
@@ -32,6 +44,14 @@ router.get('/', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Get mention stats — defined before /:mentionId to prevent route shadowing
+router.get('/stats', async (req: AuthRequest, res, next) => {
+  try {
+    const stats = await mentionService.getMentionStats(req.params.projectId)
+    success(res, stats)
+  } catch (err) { next(err) }
+})
+
 // Get single mention
 router.get('/:mentionId', async (req: AuthRequest, res, next) => {
   try {
@@ -44,20 +64,17 @@ router.get('/:mentionId', async (req: AuthRequest, res, next) => {
 router.put('/:mentionId', async (req: AuthRequest, res, next) => {
   try {
     const { tags, notes, status, isStarred } = req.body
+    const VALID_STATUSES = ['new', 'reviewed', 'assigned', 'archived'] as const
+    if (status !== undefined && !VALID_STATUSES.includes(status)) {
+      error(res, `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`, 'VALIDATION_ERROR', 400)
+      return
+    }
     const mention = await mentionService.updateMention(
       req.params.projectId,
       req.params.mentionId,
       { tags, notes, status, isStarred }
     )
     success(res, mention)
-  } catch (err) { next(err) }
-})
-
-// Get mention stats
-router.get('/stats', async (req: AuthRequest, res, next) => {
-  try {
-    const stats = await mentionService.getMentionStats(req.params.projectId)
-    success(res, stats)
   } catch (err) { next(err) }
 })
 

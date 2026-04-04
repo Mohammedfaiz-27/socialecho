@@ -139,7 +139,7 @@ export default function ReportsPage() {
             {[
               { label: 'Total Mentions', value: metrics.totalMentions.toLocaleString(), icon: '💬' },
               { label: 'Total Reach', value: fmt(metrics.totalReach), icon: '📡' },
-              { label: 'Avg Engagement', value: `${metrics.avgEngagementRate.toFixed(1)}%`, icon: '⚡' },
+              { label: 'Media Value (AVE)', value: `$${fmt(metrics.mediaValue ?? 0)}`, icon: '💰' },
               { label: 'Positive Rate', value: `${metrics.sentimentBreakdown.positivePercent}%`, icon: '😊' },
             ].map(({ label, value, icon }) => (
               <div key={label} className="bg-white rounded-xl border border-slate-200 p-4">

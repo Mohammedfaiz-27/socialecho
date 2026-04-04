@@ -18,8 +18,12 @@ export const env = {
   PORT: parseInt(optional('PORT', '5000'), 10),
   FRONTEND_URL: optional('FRONTEND_URL', 'http://localhost:5173'),
 
-  JWT_SECRET: optional('JWT_SECRET', 'dev_jwt_secret_change_in_production'),
-  JWT_REFRESH_SECRET: optional('JWT_REFRESH_SECRET', 'dev_refresh_secret_change_in_production'),
+  JWT_SECRET: process.env.NODE_ENV === 'production'
+    ? required('JWT_SECRET')
+    : optional('JWT_SECRET', 'dev_jwt_secret_change_in_production'),
+  JWT_REFRESH_SECRET: process.env.NODE_ENV === 'production'
+    ? required('JWT_REFRESH_SECRET')
+    : optional('JWT_REFRESH_SECRET', 'dev_refresh_secret_change_in_production'),
   JWT_EXPIRES_IN: optional('JWT_EXPIRES_IN', '24h'),
   JWT_REFRESH_EXPIRES_IN: optional('JWT_REFRESH_EXPIRES_IN', '7d'),
 

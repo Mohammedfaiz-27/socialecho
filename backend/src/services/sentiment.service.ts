@@ -27,11 +27,51 @@ const SARCASM_PHRASES = [
   'sure thing',
 ]
 
+const EMOTION_WORDS: Record<string, string[]> = {
+  joy:      ['happy', 'excited', 'love', 'wonderful', 'amazing', 'delighted', 'thrilled', 'elated', 'cheerful', 'ecstatic', 'joyful', 'glad', 'pleased'],
+  anger:    ['angry', 'furious', 'outraged', 'annoyed', 'frustrated', 'irritated', 'mad', 'rage', 'hate', 'infuriated', 'livid'],
+  fear:     ['scared', 'afraid', 'worried', 'anxious', 'nervous', 'terrified', 'frightened', 'dread', 'panic', 'uneasy'],
+  sadness:  ['sad', 'disappointed', 'depressed', 'unhappy', 'heartbroken', 'miserable', 'upset', 'grief', 'sorrow', 'hopeless'],
+  surprise: ['surprised', 'shocked', 'amazed', 'astonished', 'unexpected', 'wow', 'unbelievable', 'stunned'],
+  disgust:  ['disgusting', 'revolting', 'nasty', 'gross', 'awful', 'horrible', 'repulsive', 'vile'],
+}
+
+const INTENT_PATTERNS: Record<string, Array<string | RegExp>> = {
+  complaint:       ['problem', 'issue', 'broken', 'fix', 'wrong', 'terrible', 'worst', 'disappointed', 'refund', 'complain', 'not working', "doesn't work", "can't", 'failed', 'error'],
+  question:        [/\?/, 'how do', 'what is', 'when will', 'where can', 'who is', 'why does', 'can you', 'could you', 'help me', 'how can'],
+  praise:          ['love', 'great', 'amazing', 'excellent', 'fantastic', 'wonderful', 'best', 'recommend', 'awesome', 'brilliant', 'superb'],
+  purchase_intent: ['buy', 'purchase', 'order', 'how much', 'price', 'cost', 'discount', 'deal', 'sale', 'subscribe', 'plan', 'pricing'],
+}
+
+export type EmotionType = 'joy' | 'anger' | 'fear' | 'sadness' | 'surprise' | 'disgust' | 'neutral'
+export type IntentType = 'complaint' | 'question' | 'praise' | 'purchase_intent' | 'general'
+
 export interface SentimentResult {
   sentiment: 'positive' | 'negative' | 'neutral'
   confidence: number
   isSarcasm: boolean
   language: string
+  emotion: EmotionType
+  intent: IntentType
+}
+
+function detectEmotion(lower: string, words: string[]): EmotionType {
+  const scores: Record<string, number> = {}
+  for (const [emotion, emotionWords] of Object.entries(EMOTION_WORDS)) {
+    scores[emotion] = emotionWords.filter((w) => words.includes(w) || lower.includes(w)).length
+  }
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0]
+  return best[1] > 0 ? (best[0] as EmotionType) : 'neutral'
+}
+
+function detectIntent(lower: string): IntentType {
+  for (const [intent, patterns] of Object.entries(INTENT_PATTERNS)) {
+    const matched = patterns.some((p) =>
+      typeof p === 'string' ? lower.includes(p) : p.test(lower)
+    )
+    if (matched) return intent as IntentType
+  }
+  return 'general'
 }
 
 export const sentimentService = {
@@ -71,7 +111,10 @@ export const sentimentService = {
       confidence = 60
     }
 
-    return { sentiment, confidence, isSarcasm, language: 'en' }
+    const emotion = detectEmotion(lower, words)
+    const intent = detectIntent(lower)
+
+    return { sentiment, confidence, isSarcasm, language: 'en', emotion, intent }
   },
 
   calculateInfluenceScore(params: {

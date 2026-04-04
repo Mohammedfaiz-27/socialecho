@@ -312,6 +312,8 @@ export async function collectInstagramMentions(
             keywordsMatched: [keyword],
             influenceScore,
             topics: [],
+            emotion: sentiment.emotion,
+            intent: sentiment.intent,
           },
           metadata: {
             tags: [],

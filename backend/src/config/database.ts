@@ -32,7 +32,7 @@ export const sequelize = new Sequelize({
 export async function connectPostgres(): Promise<void> {
   try {
     await sequelize.authenticate()
-    await sequelize.sync({ alter: env.NODE_ENV === 'development' })
+    await sequelize.sync({ alter: false })
     logger.info('PostgreSQL connected & synced')
   } catch (err) {
     logger.error('PostgreSQL connection failed', err)

@@ -11,7 +11,12 @@ export const analyticsService = {
     const fromDate = new Date(from)
     const toDate = new Date(to)
 
-    const [mentionsTrend, sentimentAgg, sourceAgg, topMentions, topInfluencers, totalReachAgg] =
+    // Previous period for growth rate calculation
+    const periodMs = toDate.getTime() - fromDate.getTime()
+    const prevFromDate = new Date(fromDate.getTime() - periodMs)
+    const prevToDate = new Date(fromDate.getTime())
+
+    const [mentionsTrend, sentimentAgg, sourceAgg, topMentions, topInfluencers, totalReachAgg, prevPeriodAgg] =
       await Promise.all([
         // Daily mention counts
         Mention.aggregate([
@@ -83,6 +88,9 @@ export const analyticsService = {
             },
           },
         ]),
+
+        // Previous period mentions (for growth rate)
+        Mention.countDocuments({ projectId, 'temporal.publishedAt': { $gte: prevFromDate, $lte: prevToDate } }),
       ])
 
     // Fill in missing days for trend
@@ -104,7 +112,8 @@ export const analyticsService = {
     sentimentAgg.forEach((s: { _id: string; count: number }) => {
       sentimentMap[s._id] = s.count
     })
-    const totalMentions = (totalReachAgg[0]?.totalMentions as number) ?? 0
+    const aggregateSummary = totalReachAgg[0] ?? { totalMentions: 0, totalReach: 0, avgEngagement: 0 }
+    const totalMentions = (aggregateSummary.totalMentions as number) ?? 0
     const sentimentBreakdown = {
       positive: sentimentMap.positive,
       negative: sentimentMap.negative,
@@ -114,12 +123,21 @@ export const analyticsService = {
       neutralPercent: totalMentions ? Math.round((sentimentMap.neutral / totalMentions) * 100) : 0,
     }
 
+    const totalReach = (aggregateSummary.totalReach as number) ?? 0
+    // AVE/Media Value: industry average CPM ~$7.50
+    const mediaValue = Math.round(totalReach * 7.5 / 1000)
+    const prevMentions = (prevPeriodAgg as number) ?? 0
+    const growthRate = prevMentions > 0
+      ? Math.round(((totalMentions - prevMentions) / prevMentions) * 100)
+      : totalMentions > 0 ? 100 : 0
+
     const metrics = {
       totalMentions,
-      totalReach: (totalReachAgg[0]?.totalReach as number) ?? 0,
-      avgEngagementRate: (totalReachAgg[0]?.avgEngagement as number) ?? 0,
+      totalReach,
+      avgEngagementRate: (aggregateSummary.avgEngagement as number) ?? 0,
       presenceScore: Math.min(100, Math.round((totalMentions / 100) * 10)),
-      growthRate: 0, // Would need previous period comparison
+      growthRate,
+      mediaValue,
       sentimentBreakdown,
       mentionsTrend: mentionsTrendFilled,
       reachTrend: reachTrendFilled,

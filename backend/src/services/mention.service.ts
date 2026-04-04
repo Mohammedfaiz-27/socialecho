@@ -61,6 +61,7 @@ export const mentionService = {
     const query: FilterQuery<IMention> = {
       projectId,
       'temporal.publishedAt': { $gte: from, $lte: to },
+      'metadata.isSpam': { $ne: true },
     }
 
     if (filters.sentiments?.length) {
@@ -158,6 +159,22 @@ export const mentionService = {
     // Check for duplicate by URL
     const exists = await Mention.findOne({ 'content.url': mentionData.content?.url })
     if (exists) return null
+
+    // Spam/bot detection heuristics
+    const followerCount = mentionData.author?.followerCount ?? 0
+    const accountAgeDays = mentionData.author?.accountAgeDays ?? 0
+    const text = mentionData.content?.text ?? ''
+    const hashtagCount = (text.match(/#\w+/g) ?? []).length
+    const isSpam =
+      (followerCount === 0 && accountAgeDays < 7) ||
+      hashtagCount > 10 ||
+      /(.)\1{6,}/.test(text)  // excessive repeated characters
+
+    if (mentionData.metadata) {
+      mentionData.metadata.isSpam = isSpam
+    } else {
+      (mentionData as Record<string, unknown>).metadata = { isSpam }
+    }
 
     const mention = await Mention.create(mentionData)
 

@@ -66,7 +66,13 @@ export default function AnalyticsPage() {
               label="Total Mentions"
               value={metrics.totalMentions}
               trend={metrics.growthRate}
-              icon={<span className="text-xl">💬</span>}
+              accent="blue"
+              icon={
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
+              }
             />
             <MetricCard
               label="Total Reach"
@@ -75,17 +81,67 @@ export default function AnalyticsPage() {
                   ? `${(metrics.totalReach / 1_000_000).toFixed(1)}M`
                   : `${(metrics.totalReach / 1000).toFixed(1)}K`
               }
-              icon={<span className="text-xl">📡</span>}
+              accent="purple"
+              icon={
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M9 10h.01M15 10h.01M12 20h.01" />
+                </svg>
+              }
             />
             <MetricCard
-              label="Avg Engagement"
-              value={`${metrics.avgEngagementRate.toFixed(1)}%`}
-              icon={<span className="text-xl">⚡</span>}
+              label="Media Value (AVE)"
+              value={
+                (metrics.mediaValue ?? 0) >= 1_000_000
+                  ? `$${((metrics.mediaValue ?? 0) / 1_000_000).toFixed(1)}M`
+                  : (metrics.mediaValue ?? 0) >= 1_000
+                    ? `$${((metrics.mediaValue ?? 0) / 1000).toFixed(1)}K`
+                    : `$${(metrics.mediaValue ?? 0).toLocaleString()}`
+              }
+              accent="amber"
+              icon={
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
             />
             <MetricCard
               label="Positive Rate"
               value={`${metrics.sentimentBreakdown.positivePercent}%`}
-              icon={<span className="text-xl">😊</span>}
+              accent="green"
+              icon={
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+          </div>
+
+          {/* Secondary metric cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
+            <MetricCard
+              label="Presence Score"
+              value={`${metrics.presenceScore}/100`}
+              accent="blue"
+              icon={
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              }
+            />
+            <MetricCard
+              label="Avg Engagement"
+              value={`${metrics.avgEngagementRate.toFixed(1)}%`}
+              accent="purple"
+              icon={
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              }
             />
           </div>
 

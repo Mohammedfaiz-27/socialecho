@@ -258,6 +258,8 @@ export async function collectFacebookMentions(
             keywordsMatched: [keyword],
             influenceScore,
             topics: [],
+            emotion: sentiment.emotion,
+            intent: sentiment.intent,
           },
           metadata: {
             tags: [],

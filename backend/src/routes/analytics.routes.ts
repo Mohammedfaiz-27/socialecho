@@ -2,13 +2,25 @@ import { Router } from 'express'
 import { analyticsService } from '../services/analytics.service'
 import { Mention } from '../models/mongo/Mention'
 import { authenticate } from '../middleware/auth'
-import { success } from '../utils/response'
+import { success, error } from '../utils/response'
+import { Project } from '../models/postgres/Project'
 import type { AuthRequest } from '../types'
 import { subDays, formatISO } from 'date-fns'
 
 const router = Router({ mergeParams: true })
 
 router.use(authenticate)
+
+// Verify the requesting user owns the project before any analytics access
+router.use(async (req: AuthRequest, res, next) => {
+  try {
+    const project = await Project.findOne({
+      where: { id: req.params.projectId, userId: req.user!.userId },
+    })
+    if (!project) { error(res, 'Project not found', 'NOT_FOUND', 404); return }
+    next()
+  } catch (err) { next(err) }
+})
 
 router.get('/metrics', async (req: AuthRequest, res, next) => {
   try {

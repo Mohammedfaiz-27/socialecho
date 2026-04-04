@@ -38,15 +38,21 @@ export async function runCollectionCycle(): Promise<void> {
 
       logger.info(`Collecting mentions for project: ${project.name} (${keywords.length} keywords)`)
 
-      const [twitterCount, youtubeCount, newsCount, facebookCount, instagramCount] = await Promise.allSettled([
+      const collectorNames = ['Twitter', 'YouTube', 'News', 'Facebook', 'Instagram']
+      const results = await Promise.allSettled([
         collectTwitterMentions(project.id, keywords),
         collectYouTubeMentions(project.id, keywords),
         env.ENABLE_NEWS_COLLECTION ? collectNewsMentions(project.id, keywords) : Promise.resolve(0),
         env.ENABLE_FACEBOOK_COLLECTION ? collectFacebookMentions(project.id, keywords) : Promise.resolve(0),
         env.ENABLE_INSTAGRAM_COLLECTION ? collectInstagramMentions(project.id, keywords) : Promise.resolve(0),
-      ]).then((results) =>
-        results.map((r) => (r.status === 'fulfilled' ? r.value : 0))
-      )
+      ])
+      const [twitterCount, youtubeCount, newsCount, facebookCount, instagramCount] = results.map((r, i) => {
+        if (r.status === 'rejected') {
+          logger.warn(`${collectorNames[i]} collector failed for project "${project.name}": ${r.reason}`)
+          return 0
+        }
+        return r.value
+      })
 
       const total = twitterCount + youtubeCount + newsCount + facebookCount + instagramCount
       logger.info(

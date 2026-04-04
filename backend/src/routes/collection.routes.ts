@@ -40,16 +40,19 @@ router.post('/trigger/:projectId', async (req: AuthRequest, res, next) => {
       return
     }
 
-    // Run all collectors in parallel, don't wait
-    Promise.all([
+    // Run all collectors in parallel, don't wait for completion
+    const collectionPromise = Promise.all([
       collectTwitterMentions(project.id, keywords),
       collectYouTubeMentions(project.id, keywords),
       env.ENABLE_NEWS_COLLECTION ? collectNewsMentions(project.id, keywords) : Promise.resolve(0),
       env.ENABLE_FACEBOOK_COLLECTION ? collectFacebookMentions(project.id, keywords) : Promise.resolve(0),
       env.ENABLE_INSTAGRAM_COLLECTION ? collectInstagramMentions(project.id, keywords) : Promise.resolve(0),
-    ]).then(([t, y, n, f, i]) => {
-      console.log(`Manual collection done: Twitter=${t} YouTube=${y} News=${n} Facebook=${f} Instagram=${i}`)
-    }).catch(console.error)
+    ])
+    collectionPromise
+      .then(([t, y, n, f, i]) => {
+        console.log(`Manual collection done: Twitter=${t} YouTube=${y} News=${n} Facebook=${f} Instagram=${i}`)
+      })
+      .catch((err) => console.error('Manual collection error:', err))
 
     success(res, { message: `Collection started for ${keywords.length} keywords`, keywords })
   } catch (err) { next(err) }

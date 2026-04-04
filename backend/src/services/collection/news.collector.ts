@@ -122,8 +122,16 @@ export async function collectNewsMentions(
             namedEntities: [],
             hashtags: [],
             keywordsMatched: [keyword],
-            influenceScore: 6.0,
+            influenceScore: sentimentService.calculateInfluenceScore({
+              followerCount: 50000,
+              engagementRate: 0,
+              isVerified: true,
+              accountAgeDays: 1825,
+              platform: 'news',
+            }),
             topics: [],
+            emotion: sentiment.emotion,
+            intent: sentiment.intent,
           },
           metadata: {
             tags: [],
